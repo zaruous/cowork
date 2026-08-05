@@ -1,0 +1,40 @@
+# 의존성
+node_modules/
+
+# 에이전트 세션 상태 (로컬 전용, agentId/sessionId 포함)
+.claude-session.json
+.codex-session.json
+.cursor-session.json
+.session.json
+**/.session.json
+
+# 환경변수 / 자격증명
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# 실행 로그
+*.log
+npm-debug.log*
+
+# 대화 기록 로그 (사내 프로젝트 설계·코드리뷰 내용 포함 — 공개 금지)
+claude-live-chat.md
+codex-live-chat.md
+cursor-live-chat.md
+trio-chat/logs/
+
+# PDF 번역 파이프라인 (제3자 논문 원문·번역문 포함 — 공개 대상 아님)
+pdf-ko/
+
+# 에디터 / OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Python 캐시 (pdf-ko)
+__pycache__/
+*.py[cod]
