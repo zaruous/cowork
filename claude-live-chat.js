@@ -6,10 +6,33 @@ const readline = require('readline');
 const { spawn, spawnSync } = require('child_process');
 
 const CLAUDE_MODEL_ID = String(process.env.CLAUDE_MODEL || 'sonnet').trim();
+// dontAsk 는 Edit/Write 를 자동 거부하는 경우가 많다. 구현 위임(--prompt-file)은 acceptEdits 기본.
+const CLAUDE_PERMISSION_MODE = String(
+  process.env.CLAUDE_PERMISSION_MODE || 'dontAsk',
+).trim();
 const STATE_PATH = path.join(__dirname, '.claude-session.json');
 const LOG_PATH = path.join(__dirname, 'claude-live-chat.md');
 const EXIT_COMMANDS = new Set(['/exit', '/quit', '종료']);
 const NEW_SESSION_COMMAND = '/new';
+
+// 에이전트 작업 디렉터리. --cwd <path> 또는 CLAUDE_CHAT_CWD.
+// 세션 상태와 로그는 항상 __dirname 에 둔다.
+function resolveAgentCwd() {
+  const flagIndex = process.argv.indexOf('--cwd');
+  const fromFlag = flagIndex >= 0 ? process.argv[flagIndex + 1] : null;
+  const raw = fromFlag || process.env.CLAUDE_CHAT_CWD || __dirname;
+  return path.resolve(raw);
+}
+
+function resolvePromptFile() {
+  const flagIndex = process.argv.indexOf('--prompt-file');
+  if (flagIndex < 0) return null;
+  const raw = process.argv[flagIndex + 1];
+  if (!raw) throw new Error('--prompt-file 뒤에 경로가 필요합니다.');
+  return path.resolve(raw);
+}
+
+const AGENT_CWD = resolveAgentCwd();
 
 function loadState() {
   try {
@@ -84,7 +107,7 @@ function checkClaudeCli() {
   return String(versionCheck.stdout || '').trim();
 }
 
-function runClaudeTurn(prompt, sessionId, setActiveProcess) {
+function runClaudeTurn(prompt, sessionId, setActiveProcess, extraAddDirs = []) {
   return new Promise((resolve, reject) => {
     const args = [
       '-p',
@@ -94,13 +117,20 @@ function runClaudeTurn(prompt, sessionId, setActiveProcess) {
       '--model',
       CLAUDE_MODEL_ID,
       '--permission-mode',
-      'dontAsk',
+      CLAUDE_PERMISSION_MODE,
       '--safe-mode',
+      '--add-dir',
+      AGENT_CWD,
     ];
+    for (const dir of extraAddDirs) {
+      if (dir && path.resolve(dir) !== path.resolve(AGENT_CWD)) {
+        args.push('--add-dir', path.resolve(dir));
+      }
+    }
     if (sessionId) args.push('--resume', sessionId);
 
     const child = spawn('claude', args, {
-      cwd: __dirname,
+      cwd: AGENT_CWD,
       env: process.env,
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -151,8 +181,97 @@ function runClaudeTurn(prompt, sessionId, setActiveProcess) {
   });
 }
 
+async function runOneShot(prompt, forceNew, extraAddDirs = []) {
+  const cliVersion = checkClaudeCli();
+  ensureLogFile();
+
+  let state = forceNew ? null : loadState();
+  if (state && state.sessionId) {
+    console.log(`기존 세션 재개: ${state.sessionId} (턴 ${state.turnCount}까지 진행됨)`);
+    appendDivider(`세션 재개 (sessionId=${state.sessionId}, cwd=${AGENT_CWD})`);
+  } else {
+    state = { sessionId: null, turnCount: 0 };
+    saveState(state);
+    appendDivider(`새 세션 시작 (cwd=${AGENT_CWD})`);
+    console.log('새 세션을 시작합니다.');
+  }
+
+  console.log(`Claude CLI: ${cliVersion}`);
+  console.log(`모델: ${CLAUDE_MODEL_ID}`);
+  console.log(`작업 디렉터리: ${AGENT_CWD}`);
+
+  let activeProcess = null;
+  state.turnCount += 1;
+  appendTurn(state.turnCount, 'user', prompt);
+  saveState(state);
+
+  const result = await runClaudeTurn(
+    prompt,
+    state.sessionId,
+    v => { activeProcess = v; },
+    extraAddDirs,
+  );
+  try { activeProcess?.kill(); } catch { /* ignore */ }
+  state.sessionId = result.sessionId;
+  saveState(state);
+  console.log(`Claude > ${result.reply}\n`);
+  appendTurn(state.turnCount, 'claude', result.reply);
+  return result;
+}
+
 async function main() {
   const forceNew = process.argv.includes('--new');
+  const promptFile = resolvePromptFile();
+
+  if (promptFile) {
+    if (!fs.existsSync(promptFile)) {
+      throw new Error(`프롬프트 파일이 없습니다: ${promptFile}`);
+    }
+    const body = fs.readFileSync(promptFile, 'utf8').trim();
+    if (!body) throw new Error('프롬프트 파일이 비어 있습니다.');
+    // Windows 명령줄 길이 한도를 피하려고 본문은 파일로만 두고 짧은 지시만 -p 로 넘긴다.
+    // 로그에는 전문을 남긴다.
+    const shortPrompt =
+      `다음 지시 파일을 Read 도구로 처음부터 끝까지 읽은 뒤, 그 내용대로 현재 작업 디렉터리에서 구현을 완료하라.\n` +
+      `커밋하지 마라. 끝나면 변경 요약과 테스트 결과를 보고하라.\n` +
+      `지시 파일 경로: ${promptFile}`;
+    // 로그용으로는 전문을 남기고, CLI에는 짧은 프롬프트만 보낸다.
+    const cliVersion = checkClaudeCli();
+    ensureLogFile();
+    let state = forceNew ? null : loadState();
+    if (state && state.sessionId) {
+      console.log(`기존 세션 재개: ${state.sessionId} (턴 ${state.turnCount}까지 진행됨)`);
+      appendDivider(`세션 재개 (sessionId=${state.sessionId}, cwd=${AGENT_CWD})`);
+    } else {
+      state = { sessionId: null, turnCount: 0 };
+      saveState(state);
+      appendDivider(`새 세션 시작 (cwd=${AGENT_CWD})`);
+      console.log('새 세션을 시작합니다.');
+    }
+    console.log(`Claude CLI: ${cliVersion}`);
+    console.log(`모델: ${CLAUDE_MODEL_ID}`);
+    console.log(`작업 디렉터리: ${AGENT_CWD}`);
+    console.log(`프롬프트 파일: ${promptFile}`);
+
+    let activeProcess = null;
+    state.turnCount += 1;
+    appendTurn(state.turnCount, 'user', `${shortPrompt}\n\n----\n\n${body}`);
+    saveState(state);
+
+    const result = await runClaudeTurn(
+      shortPrompt,
+      state.sessionId,
+      v => { activeProcess = v; },
+      [path.dirname(promptFile)],
+    );
+    try { activeProcess?.kill(); } catch { /* ignore */ }
+    state.sessionId = result.sessionId;
+    saveState(state);
+    console.log(`Claude > ${result.reply}\n`);
+    appendTurn(state.turnCount, 'claude', result.reply);
+    return;
+  }
+
   const cliVersion = checkClaudeCli();
 
   ensureLogFile();
@@ -160,16 +279,17 @@ async function main() {
   let state = forceNew ? null : loadState();
   if (state && state.sessionId) {
     console.log(`기존 세션 재개: ${state.sessionId} (턴 ${state.turnCount}까지 진행됨)`);
-    appendDivider(`세션 재개 (sessionId=${state.sessionId})`);
+    appendDivider(`세션 재개 (sessionId=${state.sessionId}, cwd=${AGENT_CWD})`);
   } else {
     state = { sessionId: null, turnCount: 0 };
     saveState(state);
-    appendDivider('새 세션 시작');
+    appendDivider(`새 세션 시작 (cwd=${AGENT_CWD})`);
     console.log('새 세션을 시작합니다.');
   }
 
   console.log(`Claude CLI: ${cliVersion}`);
   console.log(`모델: ${CLAUDE_MODEL_ID}`);
+  console.log(`작업 디렉터리: ${AGENT_CWD}`);
   console.log('대화를 시작하세요. 종료하려면 /exit, 새 세션을 시작하려면 /new 를 입력하세요.');
 
   const rl = readline.createInterface({
@@ -209,7 +329,7 @@ async function main() {
         }
         state = { sessionId: null, turnCount: 0 };
         saveState(state);
-        appendDivider('새 세션 시작');
+        appendDivider(`새 세션 시작 (cwd=${AGENT_CWD})`);
         console.log('새 세션을 시작합니다.');
         rl.prompt();
         continue;

@@ -41,6 +41,18 @@ export CURSOR_API_KEY=key_...
 
 `codex-live-chat.js`는 Codex CLI를 띄울 때 `CODEX_API_KEY`와 `OPENAI_API_KEY`를 환경에서 **제거한다**. API 키가 아니라 ChatGPT 계정 로그인을 쓰도록 강제하기 위한 것이다.
 
+## Agent Skills (Claude · Codex · Cursor)
+
+라이브 챗 사용법을 각 도구가 자동으로 찾을 수 있도록 [Agent Skills](https://agentskills.io/) 형식으로 넣어 두었다. 폴더 구조만 도구별 검색 경로에 맞춘다(`SKILL.md` frontmatter는 공통).
+
+| 도구 | 검색 경로 | 스킬 |
+|---|---|---|
+| Claude Code | `.claude/skills/` | `claude-live-chat`, `coworks-live-chat`(엔트리 → `.agents` 본문) |
+| Codex | `.agents/skills/` | `codex-live-chat`, `coworks-live-chat`(라우터 + references) |
+| Cursor | `.cursor/skills/` (+ `.agents`/`.claude`도 로드) | `cursor-live-chat`, `coworks-live-chat`(엔트리) |
+
+채팅에서 `/claude-live-chat`, `/codex-live-chat`, `/cursor-live-chat`, `/coworks-live-chat`처럼 부르거나, “라이브 챗 열어줘”라고 하면 해당 스킬이 선택된다. 상세 표·trio 옵션은 `.agents/skills/coworks-live-chat/references/`에 있다.
+
 ## 라이브 챗 — 대화형 단일 에이전트
 
 ```bash
