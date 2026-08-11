@@ -1,22 +1,42 @@
 #!/usr/bin/env node
 'use strict';
 
-// 수동 검증용 CLI: 파싱 결과 요약 또는 전체 모델(JSON)을 출력한다.
-//   node oz-report/cli.js <파일.ozr|파일.odi> [--json]
+// 수동 검증용 CLI: 파싱 결과 요약, 전체 모델(JSON), 또는 HTML 렌더 출력.
+//   node oz-report/cli.js <파일.ozr|파일.odi> [--json] [--render [출력.html]] [--bindings]
 
 const fs = require('fs');
-const { parseAny } = require('./index');
+const path = require('path');
+const { parseAny, renderOzrToHtml } = require('./index');
 
 function main() {
   const args = process.argv.slice(2);
   const asJson = args.includes('--json');
-  const file = args.find((a) => !a.startsWith('--'));
+  const doRender = args.includes('--render');
+  const showBindings = args.includes('--bindings');
+  const positional = args.filter((a) => !a.startsWith('--'));
+  const file = positional[0];
   if (!file) {
-    console.error('사용법: node oz-report/cli.js <파일.ozr|파일.odi> [--json]');
+    console.error('사용법: node oz-report/cli.js <파일.ozr|파일.odi> [--json] [--render [출력.html]] [--bindings]');
     process.exit(1);
   }
 
   const { kind, model } = parseAny(fs.readFileSync(file));
+
+  if (doRender) {
+    if (kind !== 'ozr') {
+      console.error('--render는 .ozr 파일만 지원합니다');
+      process.exit(1);
+    }
+    const out = positional[1] || file.replace(/\.[^.]+$/, '') + '.html';
+    const { html, layout } = renderOzrToHtml(model, {
+      showBindings,
+      title: path.basename(file),
+    });
+    fs.writeFileSync(out, html);
+    console.log(`렌더 완료: ${out} (요소 ${layout.elements.length}개, ${Math.round(layout.height)}pt 높이)`);
+    for (const w of layout.warnings) console.log(`  ! ${w}`);
+    return;
+  }
 
   if (asJson) {
     console.log(JSON.stringify({ kind, model }, null, 2));

@@ -43,6 +43,7 @@ function parseOzr(input) {
   const ra = xml.attrs(root);
 
   const versionEl = xml.firstChild(root, 'VERSION');
+  const basicLabel = xml.firstChild(root, 'BASICLABEL');
   const reportInfo = xml.firstChild(root, 'REPORTINFO');
   if (!reportInfo) throw new Error('OZR에서 REPORTINFO를 찾지 못했습니다');
   const ria = xml.attrs(reportInfo);
@@ -71,6 +72,10 @@ function parseOzr(input) {
       },
       language: xml.str(ra, 'Language'),
       subDataList: splitList(xml.str(ria, 'SUBDATALIST', '')),
+    },
+    // BASICLABEL: 셀이 속성을 생략했을 때 적용되는 기본 스타일(테두리 0.25pt, 폰트 등)
+    defaults: {
+      label: basicLabel ? parseCellStyle(xml.attrs(basicLabel)) : null,
     },
     bands: [],
     odiRefs: [],
@@ -215,6 +220,7 @@ function parseCellStyle(a) {
   return {
     bgColor: xml.num(a, 'BGCOLOR'),
     fgColor: xml.num(a, 'FGCOLOR'),
+    transparent: xml.bool(a, 'TRANSPARENT'),
     font: {
       name: xml.str(a, 'FONTNAME'),
       size: xml.num(a, 'FONTSIZE'),
@@ -228,6 +234,19 @@ function parseCellStyle(a) {
       top: xml.num(a, 'DRAWTOP'),
       right: xml.num(a, 'DRAWRIGHT'),
       bottom: xml.num(a, 'DRAWBOTTOM'),
+    },
+    frameColors: {
+      left: xml.num(a, 'FRAMECOLORLEFT'),
+      top: xml.num(a, 'FRAMECOLORTOP'),
+      right: xml.num(a, 'FRAMECOLORRIGHT'),
+      bottom: xml.num(a, 'FRAMECOLORBOTTOM'),
+    },
+    padding: {
+      // 셀 안쪽 텍스트 여백(pt)
+      left: xml.num(a, 'LEFTMARGIN'),
+      top: xml.num(a, 'TOPMARGIN'),
+      right: xml.num(a, 'RIGHTMARGIN'),
+      bottom: xml.num(a, 'BOTTOMMARGIN'),
     },
     autoSize: xml.bool(a, 'AUTOSIZE', false),
     autoFontSize: xml.str(a, 'AUTOFONTSIZE'), // 'smallerOnly' 관찰 — C-1

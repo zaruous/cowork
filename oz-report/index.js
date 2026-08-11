@@ -3,6 +3,8 @@
 const { parseContainer } = require('./src/container');
 const { parseOdi } = require('./src/odi/parser');
 const { parseOzr } = require('./src/ozr/parser');
+const { buildLayout } = require('./src/render/layout');
+const { renderOzrToHtml } = require('./src/render/html');
 const { argbIntToCss } = require('./src/util/color');
 const { extractPlaceholders } = require('./src/util/placeholders');
 const { jdbcTypeName } = require('./src/util/jdbc-types');
@@ -22,6 +24,8 @@ module.exports = {
   parseOdi,
   parseOzr,
   parseAny,
+  buildLayout,
+  renderOzrToHtml,
   argbIntToCss,
   extractPlaceholders,
   jdbcTypeName,
