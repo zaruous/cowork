@@ -4,6 +4,7 @@
 // 셀 겹침으로 표현된 2단 헤더(A-4) 때문에 <table> 매핑 대신 절대배치를 쓴다.
 
 const { buildLayout } = require('./layout');
+const { formatValue } = require('./format');
 const { argbIntToCss } = require('../util/color');
 
 const DEFAULT_FONT_STACK = "'Malgun Gothic', '맑은 고딕', 'Noto Sans KR', sans-serif";
@@ -16,12 +17,13 @@ const H_TEXT_ALIGN = { 0: 'left', 1: 'center', 2: 'right' };
 /**
  * @param {object} model parseOzr() 결과
  * @param {object} [opts]
- * @param {boolean} [opts.showBindings] 데이터 바인딩 셀에 ⟨데이터셋.컬럼⟩ 표시 (검수용)
+ * @param {Record<string, Array<object>>} [opts.data] 데이터셋 이름 → 행 배열 (JSON 주입 모드)
+ * @param {boolean} [opts.showBindings] 미해석 바인딩 셀에 ⟨데이터셋.컬럼⟩ 표시 (검수용)
  * @param {string} [opts.title] HTML 문서 제목
  * @returns {{html: string, layout: object}}
  */
 function renderOzrToHtml(model, opts = {}) {
-  const layout = buildLayout(model);
+  const layout = buildLayout(model, { data: opts.data });
   const defaults = model.defaults?.label || {};
   const margins = layout.page.margins || {};
 
@@ -118,9 +120,11 @@ function renderElement(el, defaults, margins, opts) {
     .join(' ');
   css.push(`padding: ${pad}`);
 
-  // 내용: 정적 텍스트 또는 (검수 모드일 때) 바인딩 표시
+  // 내용: 해석된 데이터 값 > 정적 텍스트 > (검수 모드일 때) 미해석 바인딩 표시
   let content = '';
-  if (el.text) {
+  if (el.binding && 'value' in el && el.value !== undefined) {
+    content = escapeHtml(formatValue(el.value, s));
+  } else if (el.text) {
     content = escapeHtml(el.text);
   } else if (el.binding && opts.showBindings) {
     content = `<span class="oz-binding">⟨${escapeHtml(`${el.binding.datasetName}.${el.binding.colName}`)}⟩</span>`;

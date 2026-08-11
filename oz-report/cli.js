@@ -2,7 +2,8 @@
 'use strict';
 
 // 수동 검증용 CLI: 파싱 결과 요약, 전체 모델(JSON), 또는 HTML 렌더 출력.
-//   node oz-report/cli.js <파일.ozr|파일.odi> [--json] [--render [출력.html]] [--bindings]
+//   node oz-report/cli.js <파일.ozr|파일.odi> [--json] [--render [출력.html]] [--bindings] [--data 데이터.json]
+// --data: {"데이터셋이름": [행...]} 형태의 JSON을 주입해 데이터 바인딩 렌더
 
 const fs = require('fs');
 const path = require('path');
@@ -13,7 +14,9 @@ function main() {
   const asJson = args.includes('--json');
   const doRender = args.includes('--render');
   const showBindings = args.includes('--bindings');
-  const positional = args.filter((a) => !a.startsWith('--'));
+  const dataIdx = args.indexOf('--data');
+  const dataFile = dataIdx >= 0 ? args[dataIdx + 1] : null;
+  const positional = args.filter((a, i) => !a.startsWith('--') && i !== dataIdx + 1);
   const file = positional[0];
   if (!file) {
     console.error('사용법: node oz-report/cli.js <파일.ozr|파일.odi> [--json] [--render [출력.html]] [--bindings]');
@@ -28,7 +31,9 @@ function main() {
       process.exit(1);
     }
     const out = positional[1] || file.replace(/\.[^.]+$/, '') + '.html';
+    const data = dataFile ? JSON.parse(fs.readFileSync(dataFile, 'utf8')) : undefined;
     const { html, layout } = renderOzrToHtml(model, {
+      data,
       showBindings,
       title: path.basename(file),
     });

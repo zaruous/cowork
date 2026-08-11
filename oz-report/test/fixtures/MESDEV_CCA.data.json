@@ -1,0 +1,24 @@
+{
+  "__comment": "테스트/데모용 가짜 데이터 — 실데이터 아님",
+  "SQL_HEADER": [
+    {
+      "FG_SN": "WIH000000",
+      "TRACKING_NO": "T-0000-000",
+      "CONTROL_NO": null,
+      "WORK_DATE": "2026-08-11",
+      "WORK_USER_ID": "worker01",
+      "WORK_USER_DESC": "홍길동",
+      "INSP_DATE": "2026-08-11",
+      "INSP_USER_ID": "insp01",
+      "INSP_USER_DESC": "김검사"
+    }
+  ],
+  "SQL_DATA": [
+    { "INSP_GROUP": "외관", "INSP_CODE": "C01", "INSP_NAME": "표면 스크래치 확인", "INSP_SPEC": "육안", "INSP_RESULT": "■OK □NG" },
+    { "INSP_GROUP": "외관", "INSP_CODE": "C02", "INSP_NAME": "도장 상태 확인", "INSP_SPEC": "육안", "INSP_RESULT": "■OK □NG" },
+    { "INSP_GROUP": "외관", "INSP_CODE": "C03", "INSP_NAME": "라벨 부착 위치", "INSP_SPEC": "도면", "INSP_RESULT": "■OK □NG" },
+    { "INSP_GROUP": "체결", "INSP_CODE": "C04", "INSP_NAME": "볼트 토크 확인", "INSP_SPEC": "12 N·m", "INSP_RESULT": "12 N·m" },
+    { "INSP_GROUP": "체결", "INSP_CODE": "C05", "INSP_NAME": "케이블 고정 상태", "INSP_SPEC": "육안", "INSP_RESULT": "□OK ■NG" },
+    { "INSP_GROUP": "전장", "INSP_CODE": "C06", "INSP_NAME": "절연 저항 측정", "INSP_SPEC": "≥ 100MΩ", "INSP_RESULT": "152" }
+  ]
+}
