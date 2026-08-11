@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 'use strict';
 
-// 수동 검증용 CLI: 파싱 결과 요약, 전체 모델(JSON), 또는 HTML 렌더 출력.
+// 수동 검증용 CLI: 파싱 결과 요약, 전체 모델(JSON), HTML 렌더, PDF 출력.
 //   node oz-report/cli.js <파일.ozr|파일.odi> [--json] [--render [출력.html]] [--bindings] [--data 데이터.json]
-// --data: {"데이터셋이름": [행...]} 형태의 JSON을 주입해 데이터 바인딩 렌더
+//                         [--paged] [--pdf 출력.pdf]
+// --data:  {"데이터셋이름": [행...]} 형태의 JSON을 주입해 데이터 바인딩 렌더
+// --paged: 용지 크기 페이지 분할 + REPEATNUM 빈 괘선 채움 (인쇄 미리보기)
+// --pdf:   Chromium으로 PDF 저장 (--paged 자동 적용, playwright-core 필요)
 
 const fs = require('fs');
 const path = require('path');
@@ -16,7 +19,11 @@ function main() {
   const showBindings = args.includes('--bindings');
   const dataIdx = args.indexOf('--data');
   const dataFile = dataIdx >= 0 ? args[dataIdx + 1] : null;
-  const positional = args.filter((a, i) => !a.startsWith('--') && i !== dataIdx + 1);
+  const pdfIdx = args.indexOf('--pdf');
+  const pdfFile = pdfIdx >= 0 ? args[pdfIdx + 1] : null;
+  const paged = args.includes('--paged') || !!pdfFile;
+  const consumed = new Set([dataIdx + 1, pdfIdx + 1].filter((i) => i > 0));
+  const positional = args.filter((a, i) => !a.startsWith('--') && !consumed.has(i));
   const file = positional[0];
   if (!file) {
     console.error('사용법: node oz-report/cli.js <파일.ozr|파일.odi> [--json] [--render [출력.html]] [--bindings]');
@@ -25,20 +32,32 @@ function main() {
 
   const { kind, model } = parseAny(fs.readFileSync(file));
 
-  if (doRender) {
+  if (doRender || pdfFile) {
     if (kind !== 'ozr') {
-      console.error('--render는 .ozr 파일만 지원합니다');
+      console.error('--render/--pdf는 .ozr 파일만 지원합니다');
       process.exit(1);
     }
-    const out = positional[1] || file.replace(/\.[^.]+$/, '') + '.html';
     const data = dataFile ? JSON.parse(fs.readFileSync(dataFile, 'utf8')) : undefined;
     const { html, layout } = renderOzrToHtml(model, {
       data,
+      paged,
       showBindings,
       title: path.basename(file),
     });
-    fs.writeFileSync(out, html);
-    console.log(`렌더 완료: ${out} (요소 ${layout.elements.length}개, ${Math.round(layout.height)}pt 높이)`);
+
+    if (doRender) {
+      const out = positional[1] || file.replace(/\.[^.]+$/, '') + '.html';
+      fs.writeFileSync(out, html);
+      const desc = paged
+        ? `${layout.pageCount}페이지`
+        : `요소 ${layout.elements.length}개, ${Math.round(layout.height)}pt 높이`;
+      console.log(`렌더 완료: ${out} (${desc})`);
+    }
+    if (pdfFile) {
+      exportPdf(html, layout, pdfFile).then(() => {
+        console.log(`PDF 완료: ${pdfFile} (${layout.pageCount}페이지)`);
+      });
+    }
     for (const w of layout.warnings) console.log(`  ! ${w}`);
     return;
   }
@@ -70,6 +89,32 @@ function main() {
   if (model.warnings.length) {
     console.log(`경고 (${model.warnings.length}):`);
     for (const w of model.warnings) console.log(`  ! ${w}`);
+  }
+}
+
+/** Chromium(playwright-core)으로 HTML을 용지 규격 PDF로 저장한다. */
+async function exportPdf(html, layout, outPath) {
+  let chromium;
+  try {
+    ({ chromium } = require('playwright-core'));
+  } catch {
+    console.error('--pdf에는 playwright-core가 필요합니다: npm install -D playwright-core');
+    process.exit(1);
+  }
+  const executablePath = process.env.OZ_CHROMIUM || undefined;
+  const browser = await chromium.launch(executablePath ? { executablePath } : {});
+  try {
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: 'load' });
+    // page.pdf는 pt 단위를 받지 않는다 — 인치로 변환 (1pt = 1/72in)
+    await page.pdf({
+      path: outPath,
+      width: `${(layout.width / 72).toFixed(4)}in`,
+      height: `${(layout.pageHeight / 72).toFixed(4)}in`,
+      printBackground: true,
+    });
+  } finally {
+    await browser.close();
   }
 }
 

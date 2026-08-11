@@ -4,6 +4,7 @@
 // 셀 겹침으로 표현된 2단 헤더(A-4) 때문에 <table> 매핑 대신 절대배치를 쓴다.
 
 const { buildLayout } = require('./layout');
+const { buildPagedLayout } = require('./paginate');
 const { formatValue } = require('./format');
 const { argbIntToCss } = require('../util/color');
 
@@ -18,19 +19,27 @@ const H_TEXT_ALIGN = { 0: 'left', 1: 'center', 2: 'right' };
  * @param {object} model parseOzr() 결과
  * @param {object} [opts]
  * @param {Record<string, Array<object>>} [opts.data] 데이터셋 이름 → 행 배열 (JSON 주입 모드)
+ * @param {boolean} [opts.paged] 페이지 분할 모드 (인쇄/PDF용, P6) — 용지 크기 페이지 + REPEATNUM 채움
+ * @param {boolean} [opts.fillRepeat] paged에서 REPEATNUM 빈 괘선 채움 (기본 true)
  * @param {boolean} [opts.showBindings] 미해석 바인딩 셀에 ⟨데이터셋.컬럼⟩ 표시 (검수용)
  * @param {string} [opts.title] HTML 문서 제목
  * @returns {{html: string, layout: object}}
  */
 function renderOzrToHtml(model, opts = {}) {
-  const layout = buildLayout(model, { data: opts.data });
   const defaults = model.defaults?.label || {};
+  const layout = opts.paged
+    ? buildPagedLayout(model, { data: opts.data, fillRepeat: opts.fillRepeat })
+    : buildLayout(model, { data: opts.data });
   const margins = layout.page.margins || {};
 
-  const body = layout.elements
-    .map((el) => renderElement(el, defaults, margins, opts))
+  const pageDivs = (opts.paged ? layout.pages.map((p) => p.elements) : [layout.elements])
+    .map((elements) => {
+      const body = elements.map((el) => renderElement(el, defaults, margins, opts)).join('\n');
+      return `<div class="oz-page">\n${body}\n</div>`;
+    })
     .join('\n');
 
+  const pageH = opts.paged ? layout.pageHeight : layout.height;
   const html = `<!doctype html>
 <html lang="ko">
 <head>
@@ -38,12 +47,13 @@ function renderOzrToHtml(model, opts = {}) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(opts.title || model.report.name || 'OZ Report')}</title>
 <style>
+  @page { size: ${pt(layout.width)} ${pt(pageH)}; margin: 0; }
   body { margin: 0; padding: 24px; background: #52565c; }
   .oz-page {
     position: relative;
     width: ${pt(layout.width)};
-    height: ${pt(layout.height)};
-    margin: 0 auto;
+    height: ${pt(pageH)};
+    margin: 0 auto 24px;
     background: #ffffff;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
     overflow: hidden;
@@ -57,12 +67,15 @@ function renderOzrToHtml(model, opts = {}) {
     line-height: 1.15;
   }
   .oz-binding { color: #7a8db0; font-style: italic; }
+  @media print {
+    body { padding: 0; background: #ffffff; }
+    .oz-page { margin: 0; box-shadow: none; break-after: page; }
+    .oz-page:last-child { break-after: auto; }
+  }
 </style>
 </head>
 <body>
-<div class="oz-page">
-${body}
-</div>
+${pageDivs}
 </body>
 </html>
 `;

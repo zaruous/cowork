@@ -64,6 +64,7 @@
       <div class="row" style="margin-top:8px">
         <button class="primary" id="renderBtn" disabled>렌더</button>
         <label class="muted"><input type="checkbox" id="showBindings" checked> 미해석 바인딩 표시</label>
+        <label class="muted"><input type="checkbox" id="paged"> 페이지 모드(인쇄)</label>
       </div>
     </section>
   </div>
@@ -175,7 +176,11 @@ document.getElementById('renderBtn').addEventListener('click', async () => {
   const res = await api(`/api/reports/${encodeURIComponent(selected)}/render`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ data, showBindings: document.getElementById('showBindings').checked }),
+    body: JSON.stringify({
+      data,
+      showBindings: document.getElementById('showBindings').checked,
+      paged: document.getElementById('paged').checked,
+    }),
   });
   document.getElementById('viewer').srcdoc = await res.text();
   document.getElementById('viewerTitle').textContent = `미리보기 — ${selected}`;

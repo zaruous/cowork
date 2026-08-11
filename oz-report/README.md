@@ -9,7 +9,23 @@ FORCS OZ Report 파일(`.ozr` 레포트 양식, `.odi` 데이터 정의)을 임�
 - **P2 정적 렌더러** ✅ — 밴드 배치 엔진(Y-오프셋 재계산) + 절대배치 HTML 출력. 샘플 3종 육안 검수용 렌더 확인
 - **P3 데이터 바인딩** ✅ — JSON 주입 모드, 행 반복(밴드 실측 높이), 그룹핑 병합(DATATYPE=6), 룩업(DATATYPE=7), 숫자 FORMAT(DecimalFormat 서브셋), NULLTYPE 빈칸
 - **P4 임포트 파이프라인 + 데모 UI** ✅ — 파일 기반 레지스트리(`ReportStore`), OZR↔ODI 자동 매칭·버저닝, HTTP API + 웹 데모(업로드/목록/파라미터/렌더)
-- P5(선택) DB 직결 / P6 인쇄·PDF — 미착수
+- **P6 인쇄/PDF** ✅ — 페이지 분할 엔진(REPEATNUM 상한·빈 괘선 채움, PageHeader/FIXEDTITLE 헤더 반복, PageFooter 하단 고정, 페이지 내 그룹핑 병합), print CSS(@page), CLI `--pdf`
+- P5(선택) DB 직결 — 미착수 (대상 시스템·접속 정보 확정 후)
+
+## PDF/인쇄 출력
+
+```bash
+# 페이지 분할 HTML (인쇄 미리보기 — @media print 포함)
+node oz-report/cli.js 파일.ozr --render out.html --paged --data 데이터.json
+
+# PDF 저장 (Chromium 필요: devDependency playwright-core, 실행 파일은 OZ_CHROMIUM로 지정 가능)
+node oz-report/cli.js 파일.ozr --pdf out.pdf --data 데이터.json
+```
+
+인쇄 규칙: Title은 첫 페이지에만, PageHeader는 매 페이지 반복, PageFooter는 매 페이지 하단 고정.
+데이터밴드는 REPEATNUM(예: CCA 38행/페이지)을 상한으로 흘리고, 페이지가 넘어가면
+`FIXEDTITLE=true`인 밴드의 헤더를 다시 그린다. 마지막 페이지의 남는 행은 빈 괘선으로
+채워 양식을 완성한다(`fillRepeat: false`로 끌 수 있음). 그룹핑 병합은 페이지 안에서만 한다.
 
 ## 데모 실행
 

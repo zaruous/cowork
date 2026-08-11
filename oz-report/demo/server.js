@@ -84,6 +84,7 @@ async function route(store, req, res) {
     const opts = body.length > 0 ? JSON.parse(body.toString('utf8')) : {};
     const { html, layout } = store.render(id, {
       data: opts.data,
+      paged: !!opts.paged,
       showBindings: opts.showBindings !== false, // 데모 기본: 미해석 바인딩 표시
     });
     res.writeHead(200, {
