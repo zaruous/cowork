@@ -38,3 +38,6 @@ desktop.ini
 # Python 캐시 (pdf-ko)
 __pycache__/
 *.py[cod]
+
+# oz-report 데모 로컬 저장소
+oz-report/demo/data/

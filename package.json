@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node --test \"oz-report/test/*.test.js\""
+    "test": "node --test \"oz-report/test/*.test.js\"",
+    "demo": "node oz-report/demo/server.js"
   },
   "keywords": [],
   "author": "",

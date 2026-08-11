@@ -8,7 +8,29 @@ FORCS OZ Report 파일(`.ozr` 레포트 양식, `.odi` 데이터 정의)을 임�
 - **P1 파서** ✅ — 컨테이너 추출, ODI/OZR 파서, 유틸(색·JDBC 타입·플레이스홀더)
 - **P2 정적 렌더러** ✅ — 밴드 배치 엔진(Y-오프셋 재계산) + 절대배치 HTML 출력. 샘플 3종 육안 검수용 렌더 확인
 - **P3 데이터 바인딩** ✅ — JSON 주입 모드, 행 반복(밴드 실측 높이), 그룹핑 병합(DATATYPE=6), 룩업(DATATYPE=7), 숫자 FORMAT(DecimalFormat 서브셋), NULLTYPE 빈칸
-- P4 임포트 파이프라인+UI — 미착수
+- **P4 임포트 파이프라인 + 데모 UI** ✅ — 파일 기반 레지스트리(`ReportStore`), OZR↔ODI 자동 매칭·버저닝, HTTP API + 웹 데모(업로드/목록/파라미터/렌더)
+- P5(선택) DB 직결 / P6 인쇄·PDF — 미착수
+
+## 데모 실행
+
+```bash
+npm run demo            # http://localhost:3465 (저장소: oz-report/demo/data/)
+node oz-report/demo/server.js 8080 /path/to/data   # 포트/저장소 지정
+```
+
+브라우저에서 `.ozr`/`.odi`를 업로드하면 파일명 베이스 기준으로 짝을 맞춰 등록된다
+(예: `MESDEV_CCA.ozr` + `MESDEV_CCA.odi` → 한 엔트리). OZR의 `OZODILIST`가 참조하는
+ODI가 없으면 경고가 표시된다. 데이터는 JSON 주입 모드로 렌더한다(DB 직결은 P5).
+
+HTTP API:
+
+| 메서드 | 경로 | 설명 |
+|---|---|---|
+| `GET` | `/api/reports` | 목록 (상태·버전·경고 수) |
+| `POST` | `/api/reports/import?filename=x.ozr` | raw 바이트 업로드 (파일당 1건) |
+| `GET` | `/api/reports/:id` | 상세 + 파라미터 정의 |
+| `POST` | `/api/reports/:id/render` | `{data, showBindings}` → HTML |
+| `DELETE` | `/api/reports/:id` | 삭제 |
 
 ## 사용법
 

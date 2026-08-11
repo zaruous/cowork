@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OZ Report 임포트 데모</title>
+<style>
+  :root { --line: #d5d9e0; --muted: #667085; --accent: #2456c4; --bg: #f4f6f9; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Malgun Gothic', '맑은 고딕', sans-serif; background: var(--bg); color: #1b2430; }
+  header { background: #fff; border-bottom: 1px solid var(--line); padding: 14px 24px; display: flex; align-items: center; gap: 16px; }
+  header h1 { font-size: 17px; margin: 0; }
+  header .hint { color: var(--muted); font-size: 12px; }
+  main { display: grid; grid-template-columns: 380px 1fr; gap: 16px; padding: 16px 24px; height: calc(100vh - 61px); }
+  .panel { background: #fff; border: 1px solid var(--line); border-radius: 8px; overflow: auto; display: flex; flex-direction: column; }
+  .panel h2 { font-size: 13px; margin: 0; padding: 10px 14px; border-bottom: 1px solid var(--line); color: var(--muted); font-weight: 600; }
+  .panel section { padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  button { font: inherit; font-size: 13px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 6px; background: #fff; cursor: pointer; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { opacity: 0.45; cursor: default; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; }
+  tr.sel { background: #eef3ff; }
+  tr[data-id] { cursor: pointer; }
+  .badge { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 9px; background: #e7ecf3; }
+  .badge.ready { background: #ddf0e0; color: #176b2c; }
+  .badge.warn { background: #fdeeda; color: #92500a; }
+  .warns { color: #92500a; font-size: 12px; margin: 6px 0 0; padding-left: 18px; }
+  textarea { width: 100%; min-height: 120px; font: 12px/1.5 ui-monospace, Consolas, monospace; border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+  .params { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; font-size: 12.5px; }
+  .params .t { color: var(--muted); }
+  iframe { flex: 1; border: 0; width: 100%; background: #52565c; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .muted { color: var(--muted); font-size: 12px; }
+  #viewerPanel { min-height: 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>OZ Report 임포트 데모</h1>
+  <span class="hint">.ozr / .odi 파일을 업로드하면 자동으로 짝을 맞춰 등록합니다. 데이터는 JSON 주입 모드(P5 DB 직결 전).</span>
+</header>
+<main>
+  <div class="panel">
+    <h2>임포트</h2>
+    <section class="row">
+      <input type="file" id="files" multiple accept=".ozr,.odi">
+      <button class="primary" id="uploadBtn">업로드</button>
+      <span class="muted" id="uploadMsg"></span>
+    </section>
+    <h2>레포트 목록</h2>
+    <section style="padding:0">
+      <table id="listTable">
+        <thead><tr><th>이름</th><th>상태</th><th>파일</th><th>v</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+    <h2>상세</h2>
+    <section id="detail"><span class="muted">레포트를 선택하세요.</span></section>
+    <h2>데이터 (JSON 주입)</h2>
+    <section>
+      <textarea id="dataJson" placeholder='{"SQL_DATA": [{"COL": "값"}], "SQL_HEADER": [{...}]}'></textarea>
+      <div class="row" style="margin-top:8px">
+        <button class="primary" id="renderBtn" disabled>렌더</button>
+        <label class="muted"><input type="checkbox" id="showBindings" checked> 미해석 바인딩 표시</label>
+      </div>
+    </section>
+  </div>
+  <div class="panel" id="viewerPanel">
+    <h2 id="viewerTitle">미리보기</h2>
+    <iframe id="viewer" title="렌더 결과"></iframe>
+  </div>
+</main>
+<script>
+'use strict';
+let selected = null;
+
+async function api(path, opts) {
+  const res = await fetch(path, opts);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || res.statusText);
+  }
+  return res;
+}
+
+async function refreshList() {
+  const { reports } = await (await api('/api/reports')).json();
+  const tbody = document.querySelector('#listTable tbody');
+  tbody.innerHTML = '';
+  for (const r of reports) {
+    const tr = document.createElement('tr');
+    tr.dataset.id = r.id;
+    if (r.id === selected) tr.classList.add('sel');
+    const status = r.status === 'ready'
+      ? `<span class="badge ready">ready</span>`
+      : `<span class="badge">odi-only</span>`;
+    const warn = r.warningCount > 0 ? ` <span class="badge warn">경고 ${r.warningCount}</span>` : '';
+    tr.innerHTML = `<td>${esc(r.name)}</td><td>${status}${warn}</td>` +
+      `<td>${r.hasOzr ? 'ozr' : ''}${r.hasOzr && r.hasOdi ? '+' : ''}${r.hasOdi ? 'odi' : ''}</td>` +
+      `<td>${r.version}</td><td><button data-del="${r.id}" title="삭제">✕</button></td>`;
+    tr.addEventListener('click', (e) => {
+      if (e.target.dataset.del) return;
+      select(r.id);
+    });
+    tbody.appendChild(tr);
+  }
+  tbody.querySelectorAll('button[data-del]').forEach((b) =>
+    b.addEventListener('click', async () => {
+      if (!confirm(`${b.dataset.del} 레포트를 삭제할까요?`)) return;
+      await api(`/api/reports/${encodeURIComponent(b.dataset.del)}`, { method: 'DELETE' });
+      if (selected === b.dataset.del) { selected = null; document.getElementById('renderBtn').disabled = true; }
+      refreshList();
+    }));
+}
+
+async function select(id) {
+  selected = id;
+  document.getElementById('renderBtn').disabled = false;
+  refreshList();
+  const { report, params } = await (await api(`/api/reports/${encodeURIComponent(id)}`)).json();
+  const d = document.getElementById('detail');
+  const datasets = report.odi?.datasets || [];
+  const allWarnings = [
+    ...(report.matchWarnings || []),
+    ...(report.ozr?.warnings || []),
+    ...(report.odi?.warnings || []),
+  ];
+  d.innerHTML = `
+    <div class="params">
+      <span class="t">레포트</span><span>${esc(report.name)} ${report.ozr ? `(밴드 ${report.ozr.bands}개, 포맷 ${esc(report.ozr.formatVersion || '?')})` : '(OZR 없음)'}</span>
+      <span class="t">파라미터</span><span>${params.length ? params.map((p) => `${esc(p.name)}${p.typeName ? ` <i class="muted">${esc(p.typeName)}</i>` : ''} = ${esc(p.defaultValue ?? '')}`).join('<br>') : '<span class="muted">없음</span>'}</span>
+      <span class="t">데이터셋</span><span>${datasets.length ? datasets.map((s) => `${esc(s.name)} <span class="muted">(필드 ${s.fieldCount}${s.placeholders.length ? `, 파라미터: ${s.placeholders.map(esc).join(', ')}` : ''})</span>`).join('<br>') : '<span class="muted">ODI 미임포트</span>'}</span>
+    </div>
+    ${allWarnings.length ? `<ul class="warns">${allWarnings.map((w) => `<li>${esc(w)}</li>`).join('')}</ul>` : ''}
+  `;
+  // 데이터 스켈레톤 자동 생성: 데이터셋별 필드명으로 빈 행 1개
+  if (datasets.length && !document.getElementById('dataJson').value.trim()) {
+    const skeleton = {};
+    for (const s of datasets) {
+      skeleton[s.name] = [Object.fromEntries(s.fields.map((f) => [f, '']))];
+    }
+    document.getElementById('dataJson').value = JSON.stringify(skeleton, null, 2);
+  }
+}
+
+document.getElementById('uploadBtn').addEventListener('click', async () => {
+  const input = document.getElementById('files');
+  const msg = document.getElementById('uploadMsg');
+  if (!input.files.length) { msg.textContent = '파일을 선택하세요'; return; }
+  msg.textContent = '업로드 중…';
+  try {
+    for (const f of input.files) {
+      await api(`/api/reports/import?filename=${encodeURIComponent(f.name)}`, {
+        method: 'POST',
+        body: await f.arrayBuffer(),
+      });
+    }
+    msg.textContent = `${input.files.length}개 임포트 완료`;
+    input.value = '';
+    refreshList();
+  } catch (e) {
+    msg.textContent = `실패: ${e.message}`;
+  }
+});
+
+document.getElementById('renderBtn').addEventListener('click', async () => {
+  if (!selected) return;
+  let data;
+  const raw = document.getElementById('dataJson').value.trim();
+  if (raw) {
+    try { data = JSON.parse(raw); } catch (e) { alert(`데이터 JSON 오류: ${e.message}`); return; }
+  }
+  const res = await api(`/api/reports/${encodeURIComponent(selected)}/render`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ data, showBindings: document.getElementById('showBindings').checked }),
+  });
+  document.getElementById('viewer').srcdoc = await res.text();
+  document.getElementById('viewerTitle').textContent = `미리보기 — ${selected}`;
+});
+
+function esc(s) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+refreshList();
+</script>
+</body>
+</html>
