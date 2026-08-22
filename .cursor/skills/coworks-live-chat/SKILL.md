@@ -1,9 +1,10 @@
 ---
 name: coworks-live-chat
 description: >-
-  Routes coworks live-chat runners across Claude, Codex, and Cursor, plus trio-chat.
-  Use when the user asks for live chat, coworks session, multi-agent debate, or
-  mentions claude-live-chat / codex-live-chat / cursor-live-chat / trio-chat.
+  Routes coworks live-chat runners across Claude, Codex, Cursor, OpenRouter, and agy,
+  plus trio-chat. Use when the user asks for live chat, coworks session, multi-agent
+  debate, or mentions claude-live-chat / codex-live-chat / cursor-live-chat /
+  openrouter-live-chat / agy-live-chat / trio-chat.
 compatibility: Node.js 18+ and the chosen agent auth. coworks repo.
 metadata:
   author: coworks
@@ -20,7 +21,10 @@ metadata:
    - Cursor → [cursor-live-chat](../cursor-live-chat/SKILL.md)
    - Claude → [claude-live-chat](../../../.claude/skills/claude-live-chat/SKILL.md)
    - Codex → [codex-live-chat](../../../.agents/skills/codex-live-chat/SKILL.md)
+   - OpenRouter → [openrouter-live-chat](../../../.agents/skills/openrouter-live-chat/SKILL.md)
+   - agy → [agy-live-chat](../../../.agents/skills/agy-live-chat/SKILL.md)
 3. [references/runners.md](../../../.agents/skills/coworks-live-chat/references/runners.md)
 4. [references/trio-chat.md](../../../.agents/skills/coworks-live-chat/references/trio-chat.md)
 
 COWORKS_ROOT는 `cursor-live-chat.js`가 있는 디렉터리다. `CURSOR_API_KEY` 필수.
+OpenRouter 러너는 `OPENROUTER_API_KEY`(`.env`)만 있으면 되고 `npm install` 이 필요 없다.

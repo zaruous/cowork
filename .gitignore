@@ -5,8 +5,12 @@ node_modules/
 .claude-session.json
 .codex-session.json
 .cursor-session.json
+.agy-session.json
 .session.json
 **/.session.json
+
+# OpenRouter 세션 (상태 없는 API라 대화 기록 전체가 이 파일에 들어간다 — 공개 금지)
+.openrouter-session.json
 
 # 환경변수 / 자격증명
 .env
@@ -23,6 +27,10 @@ npm-debug.log*
 claude-live-chat.md
 codex-live-chat.md
 cursor-live-chat.md
+openrouter-live-chat.md
+agy-live-chat.md
+openrouter-conversation-*.md
+agy-conversation-*.md
 trio-chat/logs/
 
 # PDF 번역 파이프라인 (제3자 논문 원문·번역문 포함 — 공개 대상 아님)

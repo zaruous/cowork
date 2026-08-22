@@ -1,30 +1,35 @@
 ---
 name: coworks-live-chat
 description: >-
-  Routes and runs coworks live-chat runners (Claude, Codex, Cursor) and trio-chat.
-  Use when the user asks to live-chat, resume a coworks session, delegate work via
-  prompt-file, start a 3-agent debate, or mentions claude-live-chat, codex-live-chat,
-  cursor-live-chat, or trio-chat.
-compatibility: Requires Node.js 18+ and the chosen agent CLI/SDK auth in the coworks repo.
+  Routes and runs coworks live-chat runners (Claude, Codex, Cursor, OpenRouter, agy) and
+  trio-chat. Use when the user asks to live-chat, resume a coworks session, delegate work
+  via prompt-file, start a multi-agent debate, or mentions claude-live-chat,
+  codex-live-chat, cursor-live-chat, openrouter-live-chat, agy-live-chat, or trio-chat.
+compatibility: Requires Node.js 18+ and the chosen agent CLI/SDK/API auth in the coworks repo.
 metadata:
   author: coworks
-  version: "1.0"
-  tools: claude,codex,cursor
+  version: "1.2"
+  tools: claude,codex,cursor,openrouter,agy
 ---
 
 # coworks live-chat
 
-세션을 유지한 채 Claude · Codex · Cursor와 CLI로 대화하는 coworks 러너 안내.
+세션을 유지한 채 Claude · Codex · Cursor · OpenRouter · agy(Antigravity)와 CLI로 대화하는
+coworks 러너 안내.
 
 ## Resolve repo root
 
-작업 cwd와 무관하게, `claude-live-chat.js` · `codex-live-chat.js` · `cursor-live-chat.js`가
-함께 있는 디렉터리를 **COWORKS_ROOT**로 잡는다. 이 스킬은 그 저장소 안에 있다.
+작업 cwd와 무관하게, `claude-live-chat.js` · `codex-live-chat.js` · `cursor-live-chat.js` ·
+`openrouter-live-chat.js` · `agy-live-chat.js`가 함께 있는 디렉터리를 **COWORKS_ROOT**로 잡는다.
+이 스킬은 그 저장소 안에 있다.
 
 ```bash
 cd "$COWORKS_ROOT"
-npm install   # Cursor SDK 러너용 (최초 1회)
+npm install   # Cursor SDK 러너용 (최초 1회). OpenRouter 러너는 필요 없다.
 ```
+
+API 키는 `.env`(gitignore)로 관리한다. 템플릿은 `.env.example`.
+셸 환경변수가 있으면 `.env` 값보다 우선한다.
 
 ## Pick a runner
 
@@ -33,7 +38,9 @@ npm install   # Cursor SDK 러너용 (최초 1회)
 | Claude와 이어서 대화 · `--prompt-file` 구현 위임 | [claude-live-chat](../../../.claude/skills/claude-live-chat/SKILL.md) → `node claude-live-chat.js` |
 | Codex와 이어서 대화 | [codex-live-chat](../codex-live-chat/SKILL.md) → `node codex-live-chat.js` |
 | Cursor와 이어서 대화 · 대상 repo `--cwd` | [cursor-live-chat](../../../.cursor/skills/cursor-live-chat/SKILL.md) → `node cursor-live-chat.js` |
-| 3자 라운드 토론 | `node trio-chat/trio-chat.js` — [references/trio-chat.md](references/trio-chat.md) |
+| 모델을 갈아 끼우며 대화 · 저장소 읽기 도구 · 파이프 출력 | [openrouter-live-chat](../openrouter-live-chat/SKILL.md) → `node openrouter-live-chat.js` |
+| Gemini 3.x(agy)와 이어서 대화 · 대상 repo `--cwd` | [agy-live-chat](../agy-live-chat/SKILL.md) → `node agy-live-chat.js` |
+| 3자(또는 4자) 라운드 토론 | `node trio-chat/trio-chat.js` — [references/trio-chat.md](references/trio-chat.md) |
 
 도구별 상세 절차는 위 전용 스킬을 **반드시 읽고** 따른다. 공통 표는 [references/runners.md](references/runners.md).
 
@@ -56,15 +63,19 @@ npm install   # Cursor SDK 러너용 (최초 1회)
 | Claude | `.claude-session.json` | `claude-live-chat.md` |
 | Codex | `.codex-session.json` | `codex-live-chat.md` |
 | Cursor | `.cursor-session.json` | `cursor-live-chat.md` |
+| OpenRouter | `.openrouter-session.json` (**대화 전문 저장**) | `openrouter-live-chat.md` |
+| agy | `.agy-session.json` | `agy-live-chat.md` |
 
 이 파일들은 `.gitignore` 대상이다. 커밋하지 말 것.
+OpenRouter는 서버 세션이 없어 상태 파일에 id가 아니라 대화 내용 자체가 들어간다.
 
 ## Safety
 
-- API 키를 코드·프롬프트·로그에 넣지 않는다. 환경변수만 사용.
+- API 키를 코드·프롬프트·로그에 넣지 않는다. `.env` 또는 환경변수만 사용.
 - Claude 기본 `--permission-mode dontAsk` + `--safe-mode` — 작업 디렉터리를 확인한 뒤 실행.
 - Codex는 `CODEX_API_KEY` / `OPENAI_API_KEY`를 제거한 채 ChatGPT 로그인으로만 동작.
 - Cursor `scenario-review/cursor-task.js`는 대상 repo 파일을 직접 수정한다. 더러운 워킹트리에는 비권장.
+- agy는 기본 권한 모드에서 파일 읽기는 되지만 셸 명령은 거부된다(턴이 `ERROR`). 빌드·테스트가 필요하면 `--yolo`.
 
 ## After running
 

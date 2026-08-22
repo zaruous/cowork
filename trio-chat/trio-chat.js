@@ -7,6 +7,9 @@
  * 세 참가자는 각자 자기 세션(대화 기록)을 서버 쪽에 유지하므로,
  * 매 턴 전달하는 프롬프트에는 "내가 마지막으로 말한 이후에 나온 남들의 발언"만 담는다.
  * (전체 로그를 매번 재전송하면 토큰이 라운드 제곱으로 늘고 세션 기록과도 중복된다.)
+ *
+ * --with-openrouter 를 주면 OpenRouter 좌석이 네 번째 참가자로 붙는다(기본 꺼짐).
+ * 이 좌석만은 서버 세션이 없어서 자기 발언 기록을 프로세스 안에 들고 다닌다.
  */
 
 const fs = require('fs');
@@ -27,6 +30,7 @@ const ANSI = {
   magenta: '\x1b[35m',
   cyan: '\x1b[36m',
   green: '\x1b[32m',
+  yellow: '\x1b[33m',
   red: '\x1b[31m',
   gray: '\x1b[90m',
 };
@@ -300,12 +304,47 @@ function createCursor({ cwd, timeoutMs }) {
   };
 }
 
+/**
+ * OpenRouter 좌석(선택). CLI가 아니라 HTTP API라 세션이 없다.
+ * 다른 좌석은 서버가 대화를 기억하지만 이 좌석은 messages 배열이 곧 기억이므로,
+ * 자기가 받은 프롬프트와 자기 발언만 누적해 매 턴 다시 보낸다
+ * (남들의 발언은 buildFollowUp 이 이미 프롬프트에 넣어 준다 → 중복 전송 없음).
+ */
+function createOpenRouter({ timeoutMs }) {
+  const { OpenRouterClient } = require('../openrouter-client');
+  const client = new OpenRouterClient({
+    model: String(process.env.OPENROUTER_MODEL || '').trim() || undefined,
+    reasoningEffort: String(process.env.OPENROUTER_EFFORT || '').trim().toLowerCase() || null,
+    timeoutMs,
+  });
+  const messages = [];
+
+  return {
+    name: 'OpenRouter',
+    emoji: '🟠',
+    color: ANSI.yellow,
+    get sessionId() {
+      // 서버 세션이 없다. 대신 이 좌석이 들고 있는 로컬 기록 크기를 남긴다.
+      return `local:${messages.length}msg (${client.model})`;
+    },
+    async send(text) {
+      messages.push({ role: 'user', content: text });
+      const result = await client.complete({ messages, stream: false });
+      const reply = String(result.text || '').trim();
+      if (!reply) throw new Error('openrouter가 빈 응답을 반환했습니다.');
+      messages.push({ role: 'assistant', content: reply });
+      return reply;
+    },
+    async close() {},
+  };
+}
+
 // ── 프롬프트 조립 ───────────────────────────────────────────────────────────
 
 function buildBriefing(self, roster, topic, rounds, isFirstSpeaker) {
   const others = roster.filter(p => p.name !== self.name).map(p => `${p.emoji} ${p.name}`);
   return [
-    `당신은 3자 AI 토론의 참가자 "${self.name}"입니다. 다른 참가자는 ${others.join(', ')} 입니다.`,
+    `당신은 ${roster.length}자 AI 토론의 참가자 "${self.name}"입니다. 다른 참가자는 ${others.join(', ')} 입니다.`,
     `발언 순서는 ${roster.map(p => p.name).join(' → ')} 이며, 총 ${rounds}라운드 진행합니다.`,
     '',
     '규칙:',
@@ -360,6 +399,7 @@ function parseArgs(argv) {
     log: null,
     topic: null,
     timeoutMs: DEFAULT_TIMEOUT_MS,
+    withOpenRouter: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -387,6 +427,9 @@ function parseArgs(argv) {
       case '--timeout':
         opts.timeoutMs = Math.max(1, parseInt(next(), 10) || 300) * 1000;
         break;
+      case '--with-openrouter':
+        opts.withOpenRouter = true;
+        break;
       case '-h':
       case '--help':
         opts.help = true;
@@ -403,11 +446,12 @@ function parseArgs(argv) {
 }
 
 const HELP = `
-trio-chat — Claude · Cursor · Codex 3자 라이브챗
+trio-chat — Claude · Cursor · Codex 3자 라이브챗 (--with-openrouter 시 4자)
 
 사용법: node trio-chat.js [옵션]
 
   --rounds <n>        라운드 수 (기본 ${DEFAULT_ROUNDS})
+  --with-openrouter   OpenRouter 좌석을 4번째 참가자로 추가 (OPENROUTER_API_KEY 필요)
   --cwd <path>        에이전트 작업 디렉토리 (기본: 현재 디렉토리)
   --log <path>        마크다운 로그 경로 (기본 trio-chat/logs/trio-<타임스탬프>.md)
   --topic <text>      토론 주제
@@ -459,6 +503,8 @@ async function main() {
     createCursor({ cwd: opts.cwd, timeoutMs: opts.timeoutMs }),
     createCodex({ cwd: opts.cwd, timeoutMs: opts.timeoutMs }),
   ];
+  // 기본 구성은 3자 그대로. 플래그를 준 경우에만 네 번째 좌석을 붙인다.
+  if (opts.withOpenRouter) roster.push(createOpenRouter({ timeoutMs: opts.timeoutMs }));
 
   const log = createLogger(opts.log);
   log.write(

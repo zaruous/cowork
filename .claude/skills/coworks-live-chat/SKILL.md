@@ -1,9 +1,10 @@
 ---
 name: coworks-live-chat
 description: >-
-  Routes coworks live-chat runners across Claude, Codex, and Cursor, plus trio-chat.
-  Use when the user asks for live chat, coworks session, multi-agent debate, or
-  mentions claude-live-chat / codex-live-chat / cursor-live-chat / trio-chat.
+  Routes coworks live-chat runners across Claude, Codex, Cursor, OpenRouter, and agy,
+  plus trio-chat. Use when the user asks for live chat, coworks session, multi-agent
+  debate, or mentions claude-live-chat / codex-live-chat / cursor-live-chat /
+  openrouter-live-chat / agy-live-chat / trio-chat.
 compatibility: Node.js 18+ and the chosen agent auth. coworks repo.
 metadata:
   author: coworks
@@ -20,6 +21,8 @@ metadata:
    - Claude → [claude-live-chat](../claude-live-chat/SKILL.md)
    - Codex → [codex-live-chat](../../../.agents/skills/codex-live-chat/SKILL.md)
    - Cursor → [cursor-live-chat](../../../.cursor/skills/cursor-live-chat/SKILL.md)
+   - OpenRouter → [openrouter-live-chat](../openrouter-live-chat/SKILL.md)
+   - agy → [agy-live-chat](../agy-live-chat/SKILL.md)
 3. 상세 표 → [references/runners.md](../../../.agents/skills/coworks-live-chat/references/runners.md)
 4. trio → [references/trio-chat.md](../../../.agents/skills/coworks-live-chat/references/trio-chat.md)
 
