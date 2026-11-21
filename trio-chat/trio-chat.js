@@ -395,6 +395,7 @@ function createLogger(logPath) {
 function parseArgs(argv) {
   const opts = {
     rounds: DEFAULT_ROUNDS,
+    only: null, // --only cursor,codex 처럼 참가자 부분 선택 (이름 소문자)
     cwd: process.cwd(),
     log: null,
     topic: null,
@@ -409,6 +410,9 @@ function parseArgs(argv) {
       return v;
     };
     switch (a) {
+      case '--only':
+        opts.only = next().split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+        break;
       case '--rounds':
         opts.rounds = Math.max(1, parseInt(next(), 10) || DEFAULT_ROUNDS);
         break;
@@ -452,6 +456,7 @@ trio-chat — Claude · Cursor · Codex 3자 라이브챗 (--with-openrouter 시
 
   --rounds <n>        라운드 수 (기본 ${DEFAULT_ROUNDS})
   --with-openrouter   OpenRouter 좌석을 4번째 참가자로 추가 (OPENROUTER_API_KEY 필요)
+  --only <a,b>        참가자 부분 선택 (claude,cursor,codex,openrouter 중 2명 이상, 예: --only cursor,codex)
   --cwd <path>        에이전트 작업 디렉토리 (기본: 현재 디렉토리)
   --log <path>        마크다운 로그 경로 (기본 trio-chat/logs/trio-<타임스탬프>.md)
   --topic <text>      토론 주제
@@ -505,6 +510,13 @@ async function main() {
   ];
   // 기본 구성은 3자 그대로. 플래그를 준 경우에만 네 번째 좌석을 붙인다.
   if (opts.withOpenRouter) roster.push(createOpenRouter({ timeoutMs: opts.timeoutMs }));
+  // --only 가 있으면 지정한 참가자만 남긴다 (예: --only cursor,codex). 좌석 생성은 send 전까지 프로세스를 띄우지 않아 무해.
+  if (opts.only) {
+    for (let i = roster.length - 1; i >= 0; i--) {
+      if (!opts.only.includes(roster[i].name.toLowerCase())) roster.splice(i, 1);
+    }
+    if (roster.length < 2) throw new Error(`--only 에 맞는 참가자가 2명 미만입니다: ${opts.only.join(',')}`);
+  }
 
   const log = createLogger(opts.log);
   log.write(
