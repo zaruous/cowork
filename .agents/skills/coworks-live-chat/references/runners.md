@@ -9,6 +9,7 @@
 | `cursor-live-chat.js` | `CURSOR_API_KEY` + `npm install` (`@cursor/sdk`) |
 | `openrouter-live-chat.js` | `OPENROUTER_API_KEY` in `.env` (no npm install — Node 18+ fetch) |
 | `agy-live-chat.js` | Antigravity CLI (`agy`) installed + logged in (`agy models`); no npm install |
+| `opencode-live-chat.js` | OpenCode CLI (`opencode`) + provider auth (`opencode auth list`); no npm install |
 | `trio-chat/trio-chat.js` | Claude + Codex + Cursor (+ `OPENROUTER_API_KEY` for `--with-openrouter`) |
 
 ## Environment
@@ -34,6 +35,12 @@
 | `AGY_CHAT_CWD` | agy agent cwd (also added to workspace) | script dir |
 | `AGY_TIMEOUT` | agy per-turn limit (sec) | `600` |
 | `AGY_SKIP_PERMISSIONS` | `1` → auto-approve shell commands | off |
+| `OPENCODE_BIN` | `opencode` executable path | `%APPDATA%\npm\node_modules\@opencode\cli\bin\opencode.exe` |
+| `OPENCODE_MODEL` | OpenCode model (`provider/model[#variant]`) | CLI/session default |
+| `OPENCODE_AGENT` | OpenCode agent (`build`/`plan`/...) | CLI default |
+| `OPENCODE_CHAT_CWD` | OpenCode agent cwd | script dir |
+| `OPENCODE_TIMEOUT` | OpenCode per-turn limit (sec) | `600` |
+| `OPENCODE_AUTO` | `1` → auto-approve permissions | off |
 
 ## Launch examples
 
@@ -69,6 +76,12 @@ node agy-live-chat.js --model gemini-3.1-pro-high --effort high
 node agy-live-chat.js --yolo                        # shell commands auto-approved
 node agy-live-chat.js --raw --prompt "..." > out.md # stdout = answer only
 node agy-chat.js                                    # fixed 3-turn smoke test
+
+# OpenCode CLI — resume / fresh / target repo / model / pipe
+node opencode-live-chat.js
+node opencode-live-chat.js --new --cwd /path/to/target-repo
+node opencode-live-chat.js --model openai/gpt-5.1 --agent plan --auto
+node opencode-live-chat.js --raw --prompt "..." > out.md
 ```
 
 PowerShell:
@@ -88,6 +101,7 @@ node cursor-live-chat.js --cwd D:\git\java\reporter
 | Cursor live-chat | `composer-2.5` fixed |
 | OpenRouter | `OPENROUTER_MODEL` (default `stealth/ox-alpha`) |
 | agy | `AGY_MODEL` or CLI default (`agy models` lists Gemini 3.x / Claude / GPT-OSS) |
+| OpenCode | `OPENCODE_MODEL` or CLI/session default (`opencode models`) |
 | trio-chat Cursor seat | `auto` |
 
 ## Related scripts (not interactive live-chat)

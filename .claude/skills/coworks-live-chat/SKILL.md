@@ -23,6 +23,7 @@ metadata:
    - Cursor → [cursor-live-chat](../../../.cursor/skills/cursor-live-chat/SKILL.md)
    - OpenRouter → [openrouter-live-chat](../openrouter-live-chat/SKILL.md)
    - agy → [agy-live-chat](../agy-live-chat/SKILL.md)
+   - OpenCode → [opencode-live-chat](../opencode-live-chat/SKILL.md)
 3. 상세 표 → [references/runners.md](../../../.agents/skills/coworks-live-chat/references/runners.md)
 4. trio → [references/trio-chat.md](../../../.agents/skills/coworks-live-chat/references/trio-chat.md)
 

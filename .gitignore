@@ -6,6 +6,7 @@ node_modules/
 .codex-session.json
 .cursor-session.json
 .agy-session.json
+.opencode-session.json
 .session.json
 **/.session.json
 
@@ -29,6 +30,7 @@ codex-live-chat.md
 cursor-live-chat.md
 openrouter-live-chat.md
 agy-live-chat.md
+opencode-live-chat.md
 openrouter-conversation-*.md
 agy-conversation-*.md
 trio-chat/logs/

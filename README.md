@@ -17,6 +17,7 @@ Claude · Cursor · Codex · agy(Antigravity) 네 코딩 에이전트와 OpenRou
   | `codex-live-chat.js` | Codex CLI + `codex login` (ChatGPT 계정) |
   | `openrouter-*` | `OPENROUTER_API_KEY` (의존성 없음 — Node 18+ 내장 `fetch` 사용) |
   | `agy-*` | Antigravity CLI(`agy`) 설치 + 로그인 (`agy models`로 확인, 의존성 없음) |
+  | `opencode-live-chat.js` | OpenCode CLI(`opencode`) 설치 + 공급자 자격증명 (`opencode auth list`로 확인, 의존성 없음) |
   | `trio-chat/trio-chat.js` | 위 코딩 에이전트 3종 (`--with-openrouter` 사용 시 `OPENROUTER_API_KEY`도) |
 
 ```bash
@@ -89,6 +90,7 @@ node codex-live-chat.js  [--new]
 node cursor-live-chat.js [--new] [--cwd <디렉터리>]
 node openrouter-live-chat.js [--new] [--cwd <디렉터리>] [--effort <low|high|max>]
 node agy-live-chat.js        [--new] [--cwd <디렉터리>] [--effort <low|medium|high>] [--yolo]
+node opencode-live-chat.js   [--new] [--cwd <디렉터리>] [--model <provider/model>] [--agent <name>] [--auto]
 ```
 
 프롬프트(`나 > `)에서 입력하면 응답이 출력되고 마크다운 로그에 누적된다.
@@ -110,6 +112,7 @@ OpenRouter 러너에는 모델·effort·첨부를 다루는 명령이 더 있다
 | `cursor-live-chat.js` | `.cursor-session.json` | `cursor-live-chat.md` |
 | `openrouter-live-chat.js` | `.openrouter-session.json` (**대화 전문**) | `openrouter-live-chat.md` |
 | `agy-live-chat.js` | `.agy-session.json` | `agy-live-chat.md` |
+| `opencode-live-chat.js` | `.opencode-session.json` | `opencode-live-chat.md` |
 
 `cursor-live-chat.js`의 `--cwd`는 **에이전트의 작업 디렉터리**만 바꾼다. 세션 상태와 로그는 항상 스크립트 폴더에 모인다. 모델은 `composer-2.5` 고정.
 

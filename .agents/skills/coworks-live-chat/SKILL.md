@@ -40,6 +40,7 @@ API 키는 `.env`(gitignore)로 관리한다. 템플릿은 `.env.example`.
 | Cursor와 이어서 대화 · 대상 repo `--cwd` | [cursor-live-chat](../../../.cursor/skills/cursor-live-chat/SKILL.md) → `node cursor-live-chat.js` |
 | 모델을 갈아 끼우며 대화 · 저장소 읽기 도구 · 파이프 출력 | [openrouter-live-chat](../openrouter-live-chat/SKILL.md) → `node openrouter-live-chat.js` |
 | Gemini 3.x(agy)와 이어서 대화 · 대상 repo `--cwd` | [agy-live-chat](../agy-live-chat/SKILL.md) → `node agy-live-chat.js` |
+| OpenCode CLI(여러 공급자 모델)와 이어서 대화 · 대상 repo `--cwd` | [opencode-live-chat](../opencode-live-chat/SKILL.md) → `node opencode-live-chat.js` |
 | 3자(또는 4자) 라운드 토론 | `node trio-chat/trio-chat.js` — [references/trio-chat.md](references/trio-chat.md) |
 
 도구별 상세 절차는 위 전용 스킬을 **반드시 읽고** 따른다. 공통 표는 [references/runners.md](references/runners.md).
@@ -65,6 +66,7 @@ API 키는 `.env`(gitignore)로 관리한다. 템플릿은 `.env.example`.
 | Cursor | `.cursor-session.json` | `cursor-live-chat.md` |
 | OpenRouter | `.openrouter-session.json` (**대화 전문 저장**) | `openrouter-live-chat.md` |
 | agy | `.agy-session.json` | `agy-live-chat.md` |
+| OpenCode | `.opencode-session.json` | `opencode-live-chat.md` |
 
 이 파일들은 `.gitignore` 대상이다. 커밋하지 말 것.
 OpenRouter는 서버 세션이 없어 상태 파일에 id가 아니라 대화 내용 자체가 들어간다.
@@ -76,6 +78,7 @@ OpenRouter는 서버 세션이 없어 상태 파일에 id가 아니라 대화 �
 - Codex는 `CODEX_API_KEY` / `OPENAI_API_KEY`를 제거한 채 ChatGPT 로그인으로만 동작.
 - Cursor `scenario-review/cursor-task.js`는 대상 repo 파일을 직접 수정한다. 더러운 워킹트리에는 비권장.
 - agy는 기본 권한 모드에서 파일 읽기는 되지만 셸 명령은 거부된다(턴이 `ERROR`). 빌드·테스트가 필요하면 `--yolo`.
+- OpenCode는 세션마다 마지막 모델을 기억한다. 잘못된 `--model`로 실패했으면 올바른 모델을 주거나 `--new`.
 
 ## After running
 
