@@ -237,7 +237,9 @@ function runOpencodeTurn(prompt, sessionId, opts, bin, setActiveProcess) {
 
     const child = spawn(bin, args, {
       cwd: opts.cwd,
-      env: process.env,
+      // opencode 는 프로세스 cwd 보다 PWD 환경변수를 먼저 본다. Git Bash 등에서 물려받은 PWD 가
+      // 이 스크립트 폴더를 가리키면 --cwd 가 무시되므로 덮어쓴다.
+      env: { ...process.env, PWD: opts.cwd },
       windowsHide: true,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
