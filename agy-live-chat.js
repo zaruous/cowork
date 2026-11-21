@@ -22,6 +22,9 @@ const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
 
+// .env 의 AGY_* (모델 · 권한 등)를 읽는다. 셸에서 준 환경변수가 우선한다.
+try { require('./load-env').load(); } catch { /* .env 없이도 동작 */ }
+
 const {
   AgySession,
   checkAgyCli,
